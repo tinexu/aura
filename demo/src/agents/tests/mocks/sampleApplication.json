@@ -1,0 +1,31 @@
+{
+    "id": "app-001",
+    "personalInfo": {
+      "firstName": "John",
+      "lastName": "Doe",
+      "ssn": "123-45-6789",
+      "address": {
+        "country": "USA"
+      },
+      "addressVerified": true
+    },
+    "incomeVerified": true,
+    "incomeDocuments": true,
+    "employmentVerified": true,
+    "demographics": {
+      "age": 42,
+      "gender": "male",
+      "race": "white",
+      "maritalStatus": "married"
+    },
+    "loanType": "mortgage",
+    "monthlyDebt": 1200,
+    "monthlyIncome": 4000,
+    "accountHistory": {
+      "transactions": [
+        { "amount": 9500, "date": "2025-06-01" },
+        { "amount": 9600, "date": "2025-06-05" },
+        { "amount": 9800, "date": "2025-06-12" }
+      ]
+    }
+}  

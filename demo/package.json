@@ -8,19 +8,27 @@
     "@testing-library/react": "^16.3.0",
     "@testing-library/user-event": "^13.5.0",
     "axios": "^1.10.0",
+    "concurrently": "^8.2.2",
+    "cors": "^2.8.5",
     "dotenv": "^16.5.0",
+    "express": "^4.21.2",
     "lucide-react": "^0.523.0",
-    "plaid": "^36.0.0",
+    "mathjs": "^14.5.2",
+    "plaid": "^11.0.0",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
+    "react-plaid-link": "^4.0.1",
     "react-scripts": "^5.0.1",
+    "recharts": "^3.0.2",
     "web-vitals": "^2.1.4"
   },
   "scripts": {
     "start": "react-scripts start",
     "build": "react-scripts build",
     "test": "react-scripts test",
-    "eject": "react-scripts eject"
+    "eject": "react-scripts eject",
+    "server": "PORT=3005 node server.js",
+    "dev": "concurrently \"npm run server\" \"npm start\""
   },
   "eslintConfig": {
     "extends": [

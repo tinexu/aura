@@ -1,11 +1,7 @@
-// src/services/marketService.js
-
-// Free APIs for real market data
 export const fetchTreasuryRates = async () => {
   try {
     console.log('Fetching real Treasury rates from FRED API...');
-    
-    // Get API key from environment variables
+
     const apiKey = process.env.REACT_APP_FRED_API_KEY;
     
     if (!apiKey) {
@@ -13,7 +9,7 @@ export const fetchTreasuryRates = async () => {
       throw new Error('No API key configured');
     }
     
-    // Use CORS proxy to access FRED API
+    // cors for fred api access
     const proxyUrl = 'https://api.allorigins.win/get?url=';
     const fredUrl = encodeURIComponent(
       `https://api.stlouisfed.org/fred/series/observations?series_id=DGS3MO&api_key=${apiKey}&file_type=json&limit=1&sort_order=desc`
@@ -36,7 +32,7 @@ export const fetchTreasuryRates = async () => {
       
       if (!isNaN(rate)) {
         console.log(`Real 3-Month Treasury Rate: ${rate}% (Date: ${observation.date})`);
-        return rate;
+        return { rate, isFallback: false };
       }
     }
     
@@ -44,7 +40,7 @@ export const fetchTreasuryRates = async () => {
   } catch (error) {
     console.error('Failed to fetch Treasury rates from FRED:', error.message);
     console.log('Using fallback rate');
-    return 5.2; // Fallback rate
+    return {rate: 5.2, isFallback: true };
   }
 };
 
@@ -52,7 +48,7 @@ export const fetchFXRates = async () => {
   try {
     console.log('Fetching real FX rates...');
     
-    // Try multiple FX APIs for better reliability
+    // reliability purposes
     const apis = [
       'https://api.exchangerate.host/latest?base=USD&symbols=EUR,GBP,JPY,SGD',
       'https://api.fxratesapi.com/latest?base=USD&symbols=EUR,GBP,JPY,SGD',
@@ -71,7 +67,6 @@ export const fetchFXRates = async () => {
         const data = await response.json();
         console.log('FX API Response:', data);
         
-        // Handle different API response formats
         let rates;
         if (data.rates) {
           rates = data.rates;
@@ -82,7 +77,6 @@ export const fetchFXRates = async () => {
           continue;
         }
         
-        // Validate we have the currencies we need
         if (rates.EUR && rates.GBP && rates.JPY && rates.SGD) {
           console.log('Real FX rates fetched successfully:', rates);
           console.log(`EUR/USD: ${rates.EUR}, GBP/USD: ${rates.GBP}`);
@@ -106,12 +100,11 @@ export const fetchFXRates = async () => {
     console.error('Failed to fetch real FX rates:', error.message);
     console.log('Using fallback FX rates');
     
-    // Generate realistic fallback rates with small variations
     const baseRates = { EUR: 0.8534, GBP: 0.7821, JPY: 149.23, SGD: 1.3245 };
     const fallbackRates = {};
     
     Object.entries(baseRates).forEach(([currency, rate]) => {
-      const variation = (Math.random() - 0.5) * 0.02; // ±1% variation
+      const variation = (Math.random() - 0.5) * 0.02;
       fallbackRates[currency] = parseFloat((rate * (1 + variation)).toFixed(4));
     });
     
@@ -128,48 +121,66 @@ export const fetchCurrentYields = async () => {
   try {
     console.log('Calculating yields based on real Treasury rates...');
     
-    // Get real Treasury rate from FRED
-    const baseRate = await fetchTreasuryRates();
-    console.log(`Using real Treasury rate: ${baseRate}% for yield calculations`);
-    
-    // Calculate realistic spreads over Treasury rates based on market conventions
+    const { value: baseRate, isFallback } = await fetchTreasuryRates();
+    const parsedRate = parseFloat(baseRate) || 4.0;
+
+    console.log(`Using ${isFallback ? 'fallback' : 'real'} Treasury rate: ${parsedRate}% for yield calculations`);
+
     const yields = {
-      'Treasury MMF': parseFloat((baseRate + 0.15).toFixed(2)),     // Treasury + 15bps
-      'Money Market': parseFloat(Math.max(baseRate - 0.25, 4.0).toFixed(2)),    // Treasury - 25bps, min 4%
-      'High Yield Savings': parseFloat(Math.max(baseRate - 0.45, 3.8).toFixed(2)), // Treasury - 45bps, min 3.8%
-      'Checking': 0.1,                                     // Always low
-      'CD 3-Month': parseFloat((baseRate + 0.25).toFixed(2)),      // Treasury + 25bps
-      'CD 6-Month': parseFloat((baseRate + 0.35).toFixed(2)),      // Treasury + 35bps
+      'Treasury MMF': { 
+        rate: parseFloat((parsedRate + 0.15).toFixed(2)), 
+        liquidity: 0.9 
+      },
+      'Money Market': { 
+        rate: parseFloat(Math.max(parsedRate - 0.25, 4.0).toFixed(2)), 
+        liquidity: 0.9 
+      },
+      'High Yield Savings': { 
+        rate: parseFloat(Math.max(parsedRate - 0.45, 3.8).toFixed(2)), 
+        liquidity: 0.8 
+      },
+      'Checking': { 
+        rate: 0.1, 
+        liquidity: 1.0 
+      },
+      'CD 3-Month': { 
+        rate: parseFloat((parsedRate + 0.25).toFixed(2)), 
+        liquidity: 0.3 
+      },
+      'CD 6-Month': { 
+        rate: parseFloat((parsedRate + 0.35).toFixed(2)), 
+        liquidity: 0.1 
+      },
       lastUpdated: new Date()
     };
-    
-    console.log('Real market-based yields calculated:', yields);
+
+    console.log('✅ Yields calculated from', isFallback ? 'fallback data' : 'real FRED data', yields);
     return yields;
+
   } catch (error) {
-    console.error('Failed to calculate yields based on real rates:', error);
-    console.log('Using fallback yields');
+    console.error('❌ Failed to calculate yields based on real rates:', error);
+    console.log('⚠️ Using fallback yields');
     return {
-      'Treasury MMF': 5.2,
-      'Money Market': 4.8,
-      'High Yield Savings': 4.5,
-      'Checking': 0.1,
-      'CD 3-Month': 5.3,
-      'CD 6-Month': 5.4,
+      'Treasury MMF': { rate: 5.35, liquidity: 0.9 },
+      'Money Market': { rate: 4.95, liquidity: 0.9 },
+      'High Yield Savings': { rate: 4.75, liquidity: 0.8 },
+      'Checking': { rate: 0.1, liquidity: 1.0 },
+      'CD 3-Month': { rate: 5.45, liquidity: 0.3 },
+      'CD 6-Month': { rate: 5.55, liquidity: 0.1 },
       lastUpdated: new Date()
     };
   }
 };
 
 export const calculateOptimalYield = (balance, currency, currentYield) => {
-  // Simple optimization logic
-  if (balance > 10000000) { // >$10M
+  if (balance > 10000000) {
     return {
       recommendation: 'Treasury MMF',
       targetYield: 5.2,
       potentialGain: (balance * (5.2 - currentYield)) / 100,
       reasoning: 'Large balance qualifies for institutional MMF rates'
     };
-  } else if (balance > 1000000) { // >$1M
+  } else if (balance > 1000000) {
     return {
       recommendation: 'Money Market',
       targetYield: 4.8,
@@ -185,7 +196,7 @@ export const calculateOptimalYield = (balance, currency, currentYield) => {
     };
   }
   
-  return null; // No optimization needed
+  return null;
 };
 
 export const calculateFXRisk = (positions, fxRates) => {
@@ -201,13 +212,11 @@ export const calculateFXRisk = (positions, fxRates) => {
     fxExposure[position.currency] = (fxExposure[position.currency] || 0) + usdValue;
   });
   
-  // Calculate exposure percentages
   const exposurePercentages = {};
   Object.keys(fxExposure).forEach(currency => {
     exposurePercentages[currency] = (fxExposure[currency] / totalUSDValue) * 100;
   });
-  
-  // Identify risks
+
   const risks = [];
   Object.entries(exposurePercentages).forEach(([currency, percentage]) => {
     if (currency !== 'USD' && percentage > 25) {
@@ -228,7 +237,48 @@ export const calculateFXRisk = (positions, fxRates) => {
   };
 };
 
-// Utility function to format currency
+export const loadMarketData = async () => {
+  try {
+    console.log('Loading comprehensive market data...');
+    
+    const [treasury, fxRates, yields] = await Promise.all([
+      fetchTreasuryRates(),
+      fetchFXRates(),
+      fetchCurrentYields()
+    ]);
+    
+    const marketData = {
+      treasuryRate: treasury.rate,
+      fxRates,
+      yields,
+      isMarketDataFallback: treasury.isFallback,
+      lastUpdated: new Date()
+    };
+    
+    console.log('Market data loaded successfully:', marketData);
+    return marketData;
+    
+  } catch (error) {
+    console.error('Failed to load market data:', error);
+    
+    // note to user that fallback data is being returned
+    return {
+      treasuryRate: 5.2,
+      fxRates: { EUR: 0.8534, GBP: 0.7821, JPY: 149.23, SGD: 1.3245 },
+      yields: {
+        'Treasury MMF': { rate: 5.2, liquidity: 0.9 },
+        'Money Market': { rate: 4.8, liquidity: 0.9 },
+        'High Yield Savings': { rate: 4.5, liquidity: 0.8 },
+        'Checking': { rate: 0.1, liquidity: 1.0 },
+        'CD 3-Month': { rate: 5.3, liquidity: 0.3 },
+        'CD 6-Month': { rate: 5.4, liquidity: 0.1 }
+      },
+      isMarketDataFallback: true,
+      lastUpdated: new Date()
+    };
+  }
+};
+
 export const formatCurrency = (amount, currency = 'USD') => {
   return new Intl.NumberFormat('en-US', {
     style: 'currency',
@@ -238,7 +288,6 @@ export const formatCurrency = (amount, currency = 'USD') => {
   }).format(amount);
 };
 
-// Utility function to format percentage
 export const formatPercentage = (value) => {
   return new Intl.NumberFormat('en-US', {
     style: 'percent',
